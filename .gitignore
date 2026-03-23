@@ -1,3 +1,4 @@
+.mcpregistry_*
 node_modules/
 build/
 *.json
