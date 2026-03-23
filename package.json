@@ -1,11 +1,23 @@
 {
   "name": "@sarahpark/google-search-console-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A minimal MCP server for Google Search Console",
+  "mcpName": "io.github.sarahpark/google-search-console",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/sarahpark/google-search-console-mcp.git"
   },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "google-search-console",
+    "gsc",
+    "seo",
+    "claude",
+    "search-analytics",
+    "url-inspection",
+    "ai"
+  ],
   "type": "module",
   "bin": {
     "google-search-console-mcp": "build/index.js"
