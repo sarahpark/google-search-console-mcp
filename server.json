@@ -1,0 +1,29 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.sarahpark/google-search-console",
+  "description": "Google Search Console MCP server — search analytics, URL inspection, and sitemaps",
+  "repository": {
+    "url": "https://github.com/sarahpark/google-search-console-mcp",
+    "source": "github"
+  },
+  "version": "1.0.1",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@sarahpark/google-search-console-mcp",
+      "version": "1.0.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "description": "Path to Google service account JSON key file",
+          "isRequired": true,
+          "format": "string",
+          "isSecret": true,
+          "name": "GOOGLE_APPLICATION_CREDENTIALS"
+        }
+      ]
+    }
+  ]
+}
