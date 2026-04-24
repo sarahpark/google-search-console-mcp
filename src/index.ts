@@ -4,26 +4,11 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { google } from "googleapis";
 import { z } from "zod";
-import { readFileSync } from "fs";
-
-// --- Auth ---
 
 function getAuthClient() {
-  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (!credentialsPath) {
-    throw new Error(
-      "GOOGLE_APPLICATION_CREDENTIALS environment variable is not set. " +
-        "Point it to your service account JSON key file."
-    );
-  }
-
-  const credentials = JSON.parse(readFileSync(credentialsPath, "utf-8"));
-
   const auth = new google.auth.GoogleAuth({
-    credentials,
     scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
   });
-
   return auth;
 }
 
@@ -53,7 +38,7 @@ server.tool(
           content: [
             {
               type: "text",
-              text: "No sites found. Make sure the service account has been added to your Search Console properties.",
+              text: "No sites found. Make sure you have access to at least one Search Console property.",
             },
           ],
         };
