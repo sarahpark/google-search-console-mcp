@@ -11,9 +11,6 @@ A Model Context Protocol (MCP) server that gives AI agents direct access to your
 
 Read-only access — this server cannot submit URLs, modify settings, or make any changes to your Search Console properties.
 
-> [!IMPORTANT]
-> This server uses service account authentication. The service account must be added as a user on each Search Console property you want to access.
-
 ## Tools
 
 <details>
@@ -67,14 +64,6 @@ List all submitted sitemaps and their status for a site.
 
 ## Installation
 
-### Quick setup via agent
-
-Already have your [service account key](#google-cloud-setup-service-account-key)? Paste this prompt into Claude Code or Claude Desktop and it will configure everything for you:
-
-> Clone and build the Google Search Console MCP server from https://github.com/sarahpark/google-search-console-mcp, then add it to my global MCP config. My service account key is at `/path/to/service-account-key.json`. After setup, call `list_sites` to verify it works.
-
-Replace the key path with your actual file location.
-
 ### Build from source
 
 ```bash
@@ -86,27 +75,46 @@ npm run build
 
 ## Configuration
 
-### Google Cloud setup: service account key
+### Google Cloud setup
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/) and create a new project (or select an existing one)
 2. Open the [Search Console API page](https://console.cloud.google.com/marketplace/product/google/searchconsole.googleapis.com) and click **Enable**
-3. In the sidebar, go to **APIs & Services** → **Credentials**
-4. Click **Create Credentials** → **Service account**
-5. Give it a name (e.g. "search-console-mcp"), then click **Create and Continue**
-6. You can skip the optional role/access steps — click **Done**
-7. On the Credentials page, click on the service account you just created
-8. Go to the **Keys** tab → **Add Key** → **Create new key** → select **JSON** → click **Create**
-9. A `.json` key file will download — save it somewhere safe (e.g. `~/.config/gcloud/service-account-key.json`)
+3. Authenticate with Application Default Credentials:
 
-> [!CAUTION]
-> Treat this key file like a secret key. Do **not** save it inside your project repo or commit it to git. Store it outside your project directory and reference it by absolute path in your MCP config.
+```bash
+gcloud auth application-default login \
+  --scopes=https://www.googleapis.com/auth/webmasters.readonly,https://www.googleapis.com/auth/cloud-platform
+```
 
-### Google Search Console access
+4. Optionally, set a quota project so API usage is billed to your project:
 
-1. Copy the service account's email address (it looks like `name@project-id.iam.gserviceaccount.com` — you can find it on the service account details page)
-2. Go to [Google Search Console](https://search.google.com/search-console)
-3. Select your property, then go to **Settings** → **Users and permissions**
-4. Click **Add user**, paste the service account email, set the permission to **Restricted**, and click **Add**
+```bash
+gcloud auth application-default set-quota-project YOUR_PROJECT_ID
+```
+
+This authenticates as your own Google account, so you automatically have access to any Search Console properties you own or have been granted access to — no service account or additional user setup needed.
+
+### Claude Code
+
+```bash
+claude mcp add gsc --scope project -- node /absolute/path/to/google-search-console-mcp/build/index.js
+```
+
+`--scope project` adds it to `.mcp.json` in the current directory. Omit `--scope project` to add it globally to `~/.claude.json`.
+
+Or add it manually to the `"mcpServers"` object in `.mcp.json` or `~/.claude.json`:
+
+```json
+{
+  "mcpServers": {
+    "gsc": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["/absolute/path/to/google-search-console-mcp/build/index.js"]
+    }
+  }
+}
+```
 
 ### Claude Desktop
 
@@ -117,33 +125,26 @@ Add to your `claude_desktop_config.json`:
   "mcpServers": {
     "gsc": {
       "command": "node",
-      "args": ["/absolute/path/to/google-search-console-mcp/build/index.js"],
-      "env": {
-        "GOOGLE_APPLICATION_CREDENTIALS": "/absolute/path/to/service-account-key.json"
-      }
+      "args": ["/absolute/path/to/google-search-console-mcp/build/index.js"]
     }
   }
 }
 ```
 
-### Claude Code (VS Code)
+## Troubleshooting
 
-Add to the `"mcpServers"` object in `~/.claude.json`:
+### Authentication errors
 
-```json
-{
-  "mcpServers": {
-    "gsc": {
-      "type": "stdio",
-      "command": "node",
-      "args": ["/absolute/path/to/google-search-console-mcp/build/index.js"],
-      "env": {
-        "GOOGLE_APPLICATION_CREDENTIALS": "/absolute/path/to/service-account-key.json"
-      }
-    }
-  }
-}
-```
+The server uses [Application Default Credentials](https://cloud.google.com/docs/authentication/application-default-credentials) (ADC). If you see auth errors, the server returns specific instructions for each issue. Common fixes:
+
+| Error | Cause | Fix |
+|-------|-------|-----|
+| `invalid_rapt` / "reauth related error" | Google Workspace re-auth policy expired your token | Re-run `gcloud auth application-default login` with scopes (see above) |
+| "quota project" | No GCP project set for API billing | Run `gcloud auth application-default set-quota-project <PROJECT_ID>` |
+| `invalid_grant` | Refresh token expired or wrong scopes | Re-run `gcloud auth application-default login` with scopes |
+| "Could not load the default credentials" | ADC not configured | Run both the login and quota project commands above |
+
+After any fix, reconnect the MCP server so it picks up the new credentials.
 
 ## Usage
 
