@@ -82,8 +82,7 @@ npm run build
 3. Authenticate with Application Default Credentials:
 
 ```bash
-gcloud auth application-default login \
-  --scopes=https://www.googleapis.com/auth/webmasters.readonly,https://www.googleapis.com/auth/cloud-platform
+gcloud auth application-default login --scopes=https://www.googleapis.com/auth/webmasters.readonly,https://www.googleapis.com/auth/cloud-platform
 ```
 
 4. Optionally, set a quota project so API usage is billed to your project:

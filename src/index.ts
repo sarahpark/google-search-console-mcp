@@ -31,6 +31,9 @@ function diagnoseAuthError(error: unknown): string | null {
   const message =
     error instanceof Error ? error.message : JSON.stringify(error);
 
+  const RECONNECT_INSTRUCTION =
+    "IMPORTANT: After running the above, you MUST reconnect this MCP server for the new credentials to take effect. In Claude Code, type /mcp and select the server to reconnect it.";
+
   // RAPT (Re-Auth Proof Token) expired — Google Workspace requires browser re-auth
   if (
     message.includes("invalid_rapt") ||
@@ -39,12 +42,11 @@ function diagnoseAuthError(error: unknown): string | null {
     return [
       "AUTHENTICATION ERROR: Google requires re-authentication (RAPT token expired).",
       "",
-      "This happens when Google Workspace enforces periodic re-authentication.",
-      "Run the following command to re-authenticate:",
+      "Tell the user to run the following command (must be a single line, do not add line breaks):",
       "",
       `  ${ADC_LOGIN_COMMAND}`,
       "",
-      "After re-authenticating, reconnect this MCP server.",
+      RECONNECT_INSTRUCTION,
     ].join("\n");
   }
 
@@ -57,13 +59,14 @@ function diagnoseAuthError(error: unknown): string | null {
     return [
       "CONFIGURATION ERROR: No quota project is set for Application Default Credentials.",
       "",
-      "The Search Console API requires a quota project to bill API usage against.",
-      "Run the following command:",
+      "Tell the user to run the following command:",
       "",
       `  ${QUOTA_PROJECT_COMMAND}`,
       "",
-      "Replace <GCP_PROJECT_ID> with the Google Cloud project that has the",
-      "Search Console API enabled. After setting the quota project, reconnect this MCP server.",
+      "Replace <GCP_PROJECT_ID> with the Google Cloud project that has the Search Console API enabled.",
+      "To list available projects, run: gcloud projects list",
+      "",
+      RECONNECT_INSTRUCTION,
     ].join("\n");
   }
 
@@ -72,15 +75,14 @@ function diagnoseAuthError(error: unknown): string | null {
     return [
       "AUTHENTICATION ERROR: The stored credentials are invalid or expired.",
       "",
-      "Re-authenticate with the correct scopes:",
+      "Tell the user to run these two commands (each must be a single line, do not add line breaks):",
       "",
-      `  ${ADC_LOGIN_COMMAND}`,
+      `  1. ${ADC_LOGIN_COMMAND}`,
+      `  2. ${QUOTA_PROJECT_COMMAND}`,
       "",
-      "Then set a quota project if not already configured:",
+      "Replace <GCP_PROJECT_ID> with the Google Cloud project that has the Search Console API enabled.",
       "",
-      `  ${QUOTA_PROJECT_COMMAND}`,
-      "",
-      "After running these commands, reconnect this MCP server.",
+      RECONNECT_INSTRUCTION,
     ].join("\n");
   }
 
@@ -92,14 +94,15 @@ function diagnoseAuthError(error: unknown): string | null {
     return [
       "AUTHENTICATION ERROR: No Application Default Credentials found.",
       "",
-      "Authenticate by running:",
+      "Tell the user to run these two commands (each must be a single line, do not add line breaks):",
       "",
-      `  ${ADC_LOGIN_COMMAND}`,
+      `  1. ${ADC_LOGIN_COMMAND}`,
+      `  2. ${QUOTA_PROJECT_COMMAND}`,
       "",
-      `  ${QUOTA_PROJECT_COMMAND}`,
+      "Replace <GCP_PROJECT_ID> with the Google Cloud project that has the Search Console API enabled.",
+      "To list available projects, run: gcloud projects list",
       "",
-      "Replace <GCP_PROJECT_ID> with the Google Cloud project that has the",
-      "Search Console API enabled. After running these commands, reconnect this MCP server.",
+      RECONNECT_INSTRUCTION,
     ].join("\n");
   }
 
@@ -112,10 +115,12 @@ function diagnoseAuthError(error: unknown): string | null {
     return [
       "CONFIGURATION ERROR: The Search Console API is not enabled in your Google Cloud project.",
       "",
-      "Enable it at:",
+      "Tell the user to enable it at:",
       "  https://console.cloud.google.com/marketplace/product/google/searchconsole.googleapis.com",
       "",
-      "Select the correct project and click 'Enable', then reconnect this MCP server.",
+      "Select the correct project and click 'Enable'.",
+      "",
+      RECONNECT_INSTRUCTION,
     ].join("\n");
   }
 
@@ -128,7 +133,7 @@ function diagnoseAuthError(error: unknown): string | null {
       "  - The authenticated Google account does not have access to the requested Search Console property",
       "  - The API quota project does not have the Search Console API enabled",
       "",
-      "Verify the correct Google account is authenticated:",
+      "Tell the user to verify the correct Google account is authenticated:",
       "",
       "  gcloud auth list",
     ].join("\n");
