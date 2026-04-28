@@ -4,27 +4,156 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { google } from "googleapis";
 import { z } from "zod";
-import { readFileSync } from "fs";
 
 // --- Auth ---
 
+const ADC_SCOPES = [
+  "https://www.googleapis.com/auth/webmasters.readonly",
+  "https://www.googleapis.com/auth/cloud-platform",
+];
+
+const ADC_LOGIN_COMMAND = `gcloud auth application-default login --scopes=${ADC_SCOPES.join(",")}`;
+const QUOTA_PROJECT_COMMAND =
+  "gcloud auth application-default set-quota-project <GCP_PROJECT_ID>";
+
 function getAuthClient() {
-  const credentialsPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (!credentialsPath) {
-    throw new Error(
-      "GOOGLE_APPLICATION_CREDENTIALS environment variable is not set. " +
-        "Point it to your service account JSON key file."
-    );
+  const auth = new google.auth.GoogleAuth({
+    scopes: ADC_SCOPES,
+  });
+  return auth;
+}
+
+/**
+ * Detect common Google API auth/config errors and return actionable fix
+ * instructions. Returns null if the error is not a recognized auth issue.
+ */
+function diagnoseAuthError(error: unknown): string | null {
+  const message =
+    error instanceof Error ? error.message : JSON.stringify(error);
+
+  const RECONNECT_INSTRUCTION =
+    "IMPORTANT: After running the above, you MUST reconnect this MCP server for the new credentials to take effect. In Claude Code, type /mcp and select the server to reconnect it.";
+
+  // RAPT (Re-Auth Proof Token) expired — Google Workspace requires browser re-auth
+  if (
+    message.includes("invalid_rapt") ||
+    message.includes("reauth related error")
+  ) {
+    return [
+      "AUTHENTICATION ERROR: Google requires re-authentication (RAPT token expired).",
+      "",
+      "Tell the user to run the following command (must be a single line, do not add line breaks):",
+      "",
+      `  ${ADC_LOGIN_COMMAND}`,
+      "",
+      RECONNECT_INSTRUCTION,
+    ].join("\n");
   }
 
-  const credentials = JSON.parse(readFileSync(credentialsPath, "utf-8"));
+  // Missing quota project
+  if (
+    message.includes("quota project") ||
+    message.includes("quota_project") ||
+    message.includes("billing/quota")
+  ) {
+    return [
+      "CONFIGURATION ERROR: No quota project is set for Application Default Credentials.",
+      "",
+      "Tell the user to run the following command:",
+      "",
+      `  ${QUOTA_PROJECT_COMMAND}`,
+      "",
+      "Replace <GCP_PROJECT_ID> with the Google Cloud project that has the Search Console API enabled.",
+      "To list available projects, run: gcloud projects list",
+      "",
+      RECONNECT_INSTRUCTION,
+    ].join("\n");
+  }
 
-  const auth = new google.auth.GoogleAuth({
-    credentials,
-    scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
-  });
+  // Generic invalid_grant (refresh token revoked, expired, or wrong scopes)
+  if (message.includes("invalid_grant")) {
+    return [
+      "AUTHENTICATION ERROR: The stored credentials are invalid or expired.",
+      "",
+      "Tell the user to run these two commands (each must be a single line, do not add line breaks):",
+      "",
+      `  1. ${ADC_LOGIN_COMMAND}`,
+      `  2. ${QUOTA_PROJECT_COMMAND}`,
+      "",
+      "Replace <GCP_PROJECT_ID> with the Google Cloud project that has the Search Console API enabled.",
+      "",
+      RECONNECT_INSTRUCTION,
+    ].join("\n");
+  }
 
-  return auth;
+  // ADC not found at all
+  if (
+    message.includes("Could not load the default credentials") ||
+    message.includes("default credentials")
+  ) {
+    return [
+      "AUTHENTICATION ERROR: No Application Default Credentials found.",
+      "",
+      "Tell the user to run these two commands (each must be a single line, do not add line breaks):",
+      "",
+      `  1. ${ADC_LOGIN_COMMAND}`,
+      `  2. ${QUOTA_PROJECT_COMMAND}`,
+      "",
+      "Replace <GCP_PROJECT_ID> with the Google Cloud project that has the Search Console API enabled.",
+      "To list available projects, run: gcloud projects list",
+      "",
+      RECONNECT_INSTRUCTION,
+    ].join("\n");
+  }
+
+  // API not enabled
+  if (
+    message.includes("has not been used in project") ||
+    message.includes("is not enabled") ||
+    message.includes("accessNotConfigured")
+  ) {
+    return [
+      "CONFIGURATION ERROR: The Search Console API is not enabled in your Google Cloud project.",
+      "",
+      "Tell the user to enable it at:",
+      "  https://console.cloud.google.com/marketplace/product/google/searchconsole.googleapis.com",
+      "",
+      "Select the correct project and click 'Enable'.",
+      "",
+      RECONNECT_INSTRUCTION,
+    ].join("\n");
+  }
+
+  // Permission denied
+  if (message.includes("forbidden") || message.includes("403")) {
+    return [
+      "PERMISSION ERROR: Access denied to the Search Console API.",
+      "",
+      "Possible causes:",
+      "  - The authenticated Google account does not have access to the requested Search Console property",
+      "  - The API quota project does not have the Search Console API enabled",
+      "",
+      "Tell the user to verify the correct Google account is authenticated:",
+      "",
+      "  gcloud auth list",
+    ].join("\n");
+  }
+
+  return null;
+}
+
+/**
+ * Format an error for tool output. Returns actionable instructions for
+ * auth/config issues, or the raw error message for other failures.
+ */
+function formatToolError(toolName: string, error: unknown): string {
+  const diagnosis = diagnoseAuthError(error);
+  if (diagnosis) {
+    return diagnosis;
+  }
+  const message =
+    error instanceof Error ? error.message : JSON.stringify(error);
+  return `Error in ${toolName}: ${message}`;
 }
 
 // --- Server setup ---
@@ -53,27 +182,22 @@ server.tool(
           content: [
             {
               type: "text",
-              text: "No sites found. Make sure the service account has been added to your Search Console properties.",
+              text: "No sites found. Make sure you have access to at least one Search Console property.",
             },
           ],
         };
       }
 
       const formatted = sites
-        .map(
-          (site) =>
-            `${site.siteUrl} (${site.permissionLevel})`
-        )
+        .map((site) => `${site.siteUrl} (${site.permissionLevel})`)
         .join("\n");
 
       return {
         content: [{ type: "text", text: `Sites:\n${formatted}` }],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
-        content: [
-          { type: "text", text: `Error listing sites: ${error.message}` },
-        ],
+        content: [{ type: "text", text: formatToolError("list_sites", error) }],
       };
     }
   }
@@ -145,7 +269,11 @@ server.tool(
         : ["query"];
 
       // Build dimension filter groups
-      const filters: any[] = [];
+      const filters: Array<{
+        dimension: string;
+        operator: string;
+        expression: string;
+      }> = [];
 
       if (queryFilter) {
         const isRegex = queryFilter.startsWith("regex:");
@@ -181,7 +309,7 @@ server.tool(
         });
       }
 
-      const requestBody: any = {
+      const requestBody: Record<string, unknown> = {
         startDate,
         endDate,
         dimensions: dimensionList,
@@ -225,10 +353,10 @@ server.tool(
         .map(() => "---")
         .join(" | ");
 
-      const dataRows = rows.map((row: any) => {
+      const dataRows = rows.map((row) => {
         const keys = (row.keys || []).join(" | ");
-        const ctr = (row.ctr * 100).toFixed(2) + "%";
-        const position = row.position.toFixed(1);
+        const ctr = ((row.ctr ?? 0) * 100).toFixed(2) + "%";
+        const position = (row.position ?? 0).toFixed(1);
         return `${keys} | ${row.clicks} | ${row.impressions} | ${ctr} | ${position}`;
       });
 
@@ -242,12 +370,12 @@ server.tool(
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         content: [
           {
             type: "text",
-            text: `Error querying search analytics: ${error.message}`,
+            text: formatToolError("search_analytics", error),
           },
         ],
       };
@@ -329,12 +457,12 @@ server.tool(
       return {
         content: [{ type: "text", text: lines.join("\n") }],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         content: [
           {
             type: "text",
-            text: `Error inspecting URL: ${error.message}`,
+            text: formatToolError("inspect_url", error),
           },
         ],
       };
@@ -368,7 +496,7 @@ server.tool(
         };
       }
 
-      const lines = sitemaps.map((sm: any) => {
+      const lines = sitemaps.map((sm) => {
         const errors = sm.errors || 0;
         const warnings = sm.warnings || 0;
         const pending = sm.isPending ? " (pending)" : "";
@@ -383,12 +511,12 @@ server.tool(
           },
         ],
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         content: [
           {
             type: "text",
-            text: `Error listing sitemaps: ${error.message}`,
+            text: formatToolError("list_sitemaps", error),
           },
         ],
       };
