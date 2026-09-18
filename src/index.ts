@@ -5,6 +5,11 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { google } from "googleapis";
 import { z } from "zod";
 
+// --- Auth ---
+
+// Resolves credentials through the standard Google auth chain: the service
+// account key at GOOGLE_APPLICATION_CREDENTIALS if that variable is set,
+// otherwise the user's gcloud Application Default Credentials.
 function getAuthClient() {
   const auth = new google.auth.GoogleAuth({
     scopes: ["https://www.googleapis.com/auth/webmasters.readonly"],
@@ -38,7 +43,7 @@ server.tool(
           content: [
             {
               type: "text",
-              text: "No sites found. Make sure you have access to at least one Search Console property.",
+              text: "No sites found. If you signed in with your own Google account, make sure it has access to at least one Search Console property. If you are using a service account, make sure the service account has been added as a user on the property.",
             },
           ],
         };
