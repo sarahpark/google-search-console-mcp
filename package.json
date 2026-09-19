@@ -2,6 +2,7 @@
   "name": "@sarahpark/google-search-console-mcp",
   "version": "1.0.1",
   "description": "A minimal MCP server for Google Search Console",
+  "license": "MIT",
   "mcpName": "io.github.sarahpark/google-search-console",
   "repository": {
     "type": "git",
@@ -14,6 +15,7 @@
     "gsc",
     "seo",
     "claude",
+    "codex",
     "search-analytics",
     "url-inspection",
     "ai"
