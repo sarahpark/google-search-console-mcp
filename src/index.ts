@@ -4,6 +4,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { google } from "googleapis";
 import { z } from "zod";
+import { createRequire } from "node:module";
+
+const { version } = createRequire(import.meta.url)("../package.json");
 
 // --- Auth ---
 
@@ -21,7 +24,7 @@ function getAuthClient() {
 
 const server = new McpServer({
   name: "google-search-console-mcp-server",
-  version: "1.0.0",
+  version,
 });
 
 const auth = getAuthClient();

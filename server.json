@@ -6,19 +6,19 @@
     "url": "https://github.com/sarahpark/google-search-console-mcp",
     "source": "github"
   },
-  "version": "1.0.1",
+  "version": "1.1.0",
   "packages": [
     {
       "registryType": "npm",
       "identifier": "@sarahpark/google-search-console-mcp",
-      "version": "1.0.1",
+      "version": "1.1.0",
       "transport": {
         "type": "stdio"
       },
       "environmentVariables": [
         {
-          "description": "Path to Google service account JSON key file",
-          "isRequired": true,
+          "description": "Optional path to a service account JSON key; omit to use local Application Default Credentials",
+          "isRequired": false,
           "format": "string",
           "isSecret": true,
           "name": "GOOGLE_APPLICATION_CREDENTIALS"

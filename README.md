@@ -24,9 +24,6 @@ Create or select a project in [Google Cloud Console](https://console.cloud.googl
 
 **Recommended for new users: sign in as yourself.** Application Default Credentials (ADC) use your existing Search Console permissions, so you don't need to add another user to your properties.
 
-> [!IMPORTANT]
-> ADC requires the source build below. The published npm package **1.0.1 requires a service account key**; use that path if you already have a service account with property access.
-
 Run both commands, replacing `YOUR_PROJECT_ID` with the project you enabled above:
 
 ```bash
@@ -47,18 +44,18 @@ The quota project is required. For permission or scope errors, see [troubleshoot
 > [!CAUTION]
 > Store the key outside your repo and never commit it. Use its absolute path in your client's configuration below.
 
-If Search Console rejects the email with "Failed to add user: email not found," use ADC instead; see [troubleshooting](#troubleshooting).
+If Search Console rejects the email with "Failed to add user: email not found," sign in as yourself instead; see [troubleshooting](#troubleshooting).
 
-The source build checks `GOOGLE_APPLICATION_CREDENTIALS` before local ADC. If switching to ADC, remove an old key-path setting from your client configuration and environment.
+The server checks `GOOGLE_APPLICATION_CREDENTIALS` before local ADC. If switching to ADC, remove an old key-path setting from your client configuration and environment.
 
 </details>
 
 ### 3. Install the server
 
-**Using ADC:** build from source. **Using a service account:** the `npx` commands in the next step download and run version 1.0.1 for you.
+The `npx` commands in the next step download and run version **1.1.0** for you. Both authentication methods work with the npm package; no clone or build is required.
 
 <details>
-<summary>Build from source (required for ADC)</summary>
+<summary>Optional: build from source</summary>
 
 ```bash
 git clone https://github.com/sarahpark/google-search-console-mcp.git
@@ -67,7 +64,7 @@ npm install
 npm run build
 ```
 
-Use the absolute path to the resulting `build/index.js` in your client configuration.
+In the client commands below, replace `npx -y @sarahpark/google-search-console-mcp@1.1.0` with `node "/absolute/path/to/google-search-console-mcp/build/index.js"`. In Claude Desktop, set `command` to `node` and `args` to an array containing that absolute path. Run `npm test` for offline authentication checks.
 
 </details>
 
@@ -76,7 +73,7 @@ Use the absolute path to the resulting `build/index.js` in your client configura
 
 After completing authentication, paste this into your agent:
 
-> Clone and build the Google Search Console MCP server from https://github.com/sarahpark/google-search-console-mcp, then add it as `gsc` to this client's user-level MCP config, preserving existing servers. Use my local Application Default Credentials. Tell me when setup is complete and whether I need to restart the client.
+> Add `npx -y @sarahpark/google-search-console-mcp@1.1.0` as `gsc` in this client's user-level MCP config, preserving existing servers. Use my local Application Default Credentials. Tell me when setup is complete and whether I need to restart the client.
 
 For a service account, replace "Use my local Application Default Credentials" with "Set `GOOGLE_APPLICATION_CREDENTIALS` to `/path/to/service-account-key.json`" and use your actual file location.
 
@@ -91,10 +88,10 @@ Choose your client and run the command for your authentication method. Replace p
 <details>
 <summary>Codex</summary>
 
-**Source build with ADC:**
+**Sign in as yourself (ADC):**
 
 ```bash
-codex mcp add gsc -- node "/absolute/path/to/google-search-console-mcp/build/index.js"
+codex mcp add gsc -- npx -y @sarahpark/google-search-console-mcp@1.1.0
 ```
 
 **npm package with a service account:**
@@ -102,7 +99,7 @@ codex mcp add gsc -- node "/absolute/path/to/google-search-console-mcp/build/ind
 ```bash
 codex mcp add gsc \
   --env "GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account-key.json" \
-  -- npx -y @sarahpark/google-search-console-mcp@1.0.1
+  -- npx -y @sarahpark/google-search-console-mcp@1.1.0
 ```
 
 For manual configuration in `~/.codex/config.toml`, see the [Codex MCP documentation](https://developers.openai.com/codex/mcp).
@@ -112,10 +109,10 @@ For manual configuration in `~/.codex/config.toml`, see the [Codex MCP documenta
 <details>
 <summary>Claude Code</summary>
 
-**Source build with ADC:**
+**Sign in as yourself (ADC):**
 
 ```bash
-claude mcp add gsc --scope user -- node "/absolute/path/to/google-search-console-mcp/build/index.js"
+claude mcp add gsc --scope user -- npx -y @sarahpark/google-search-console-mcp@1.1.0
 ```
 
 **npm package with a service account:**
@@ -123,7 +120,7 @@ claude mcp add gsc --scope user -- node "/absolute/path/to/google-search-console
 ```bash
 claude mcp add gsc --scope user \
   --env "GOOGLE_APPLICATION_CREDENTIALS=/absolute/path/to/service-account-key.json" \
-  -- npx -y @sarahpark/google-search-console-mcp@1.0.1
+  -- npx -y @sarahpark/google-search-console-mcp@1.1.0
 ```
 
 `--scope user` makes the server available across your projects. Use `--scope project` to share configuration through the project's `.mcp.json` instead.
@@ -135,14 +132,14 @@ claude mcp add gsc --scope user \
 
 Add the appropriate entry to `claude_desktop_config.json`, merging it into any existing `mcpServers` object.
 
-**Source build with ADC:**
+**Sign in as yourself (ADC):**
 
 ```json
 {
   "mcpServers": {
     "gsc": {
-      "command": "node",
-      "args": ["/absolute/path/to/google-search-console-mcp/build/index.js"]
+      "command": "npx",
+      "args": ["-y", "@sarahpark/google-search-console-mcp@1.1.0"]
     }
   }
 }
@@ -155,7 +152,7 @@ Add the appropriate entry to `claude_desktop_config.json`, merging it into any e
   "mcpServers": {
     "gsc": {
       "command": "npx",
-      "args": ["-y", "@sarahpark/google-search-console-mcp@1.0.1"],
+      "args": ["-y", "@sarahpark/google-search-console-mcp@1.1.0"],
       "env": {
         "GOOGLE_APPLICATION_CREDENTIALS": "/absolute/path/to/service-account-key.json"
       }
@@ -274,15 +271,15 @@ Keep credential files outside your repo.
 <details>
 <summary>Search Console says "Failed to add user: email not found"</summary>
 
-This has been reported when adding newly created service accounts and motivated the ADC option. Sign in as yourself and use the source build, or use an existing service account that already has access to the property.
+This has been reported when adding newly created service accounts and motivated the ADC option. Sign in as yourself, or use an existing service account that already has access to the property.
 
 </details>
 
 <details>
 <summary>Missing credentials or no properties returned</summary>
 
-- **Using npm 1.0.1:** set `GOOGLE_APPLICATION_CREDENTIALS` in the client configuration to your service account key's absolute path. This release does not support signing in through local gcloud ADC.
-- **Using ADC:** use the source build and ensure an old `GOOGLE_APPLICATION_CREDENTIALS` setting isn't overriding your login. The signed-in Google account must have access to the property.
-- **Using a service account:** confirm its email was added to each property you want to read.
+- **Using npm 1.0.1 or earlier:** update your client command to version 1.1.0 or later to use local gcloud ADC.
+- **Using ADC:** ensure an old `GOOGLE_APPLICATION_CREDENTIALS` setting isn't overriding your login. The signed-in Google account must have access to the property.
+- **Using a service account:** set `GOOGLE_APPLICATION_CREDENTIALS` to the key's absolute path and confirm its email was added to each property you want to read.
 
 </details>

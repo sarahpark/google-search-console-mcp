@@ -1,6 +1,6 @@
 {
   "name": "@sarahpark/google-search-console-mcp",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "A minimal MCP server for Google Search Console",
   "license": "MIT",
   "mcpName": "io.github.sarahpark/google-search-console",
@@ -26,6 +26,8 @@
   },
   "scripts": {
     "build": "tsc && chmod 755 build/index.js",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "prepack": "npm run build",
     "dev": "tsc --watch"
   },
   "files": [
